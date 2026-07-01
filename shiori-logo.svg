@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="240"
+   height="240"
+   viewBox="0 0 240 240"
+   fill="none"
+   role="img"
+   aria-labelledby="title desc"
+   version="1.1"
+   id="svg21"
+   sodipodi:docname="shiori-logo.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview21"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.76574491"
+     inkscape:cx="-186.74626"
+     inkscape:cy="144.30393"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="1592"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg21" />
+  <title
+     id="title">Shiori logo</title>
+  <desc
+     id="desc">Modern logo for a Japanese PDF and EPUB reader with Anki integration: a rounded app icon with an open book, bookmark, kana marks, and Shiori wordmark.</desc>
+  <defs
+     id="defs10">
+    <linearGradient
+       id="bg"
+       x1="34"
+       y1="24"
+       x2="184"
+       y2="202"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.3333333,0,0,1.3333333,-40,-37.333333)">
+      <stop
+         offset="0"
+         stop-color="#10263A"
+         id="stop1" />
+      <stop
+         offset="0.48"
+         stop-color="#123E4A"
+         id="stop2" />
+      <stop
+         offset="1"
+         stop-color="#0B1728"
+         id="stop3" />
+    </linearGradient>
+    <linearGradient
+       id="blue"
+       x1="96"
+       y1="58"
+       x2="153"
+       y2="176"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.3333333,0,0,1.3333333,-40,-37.333333)">
+      <stop
+         offset="0"
+         stop-color="#7CB7FF"
+         id="stop4" />
+      <stop
+         offset="0.5"
+         stop-color="#3F7CFF"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-color="#6B5CFF"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       id="mint"
+       x1="59"
+       y1="67"
+       x2="145"
+       y2="169"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#D9F6FF"
+         id="stop7" />
+      <stop
+         offset="1"
+         stop-color="#80C7DD"
+         id="stop8" />
+    </linearGradient>
+    <filter
+       id="shadow"
+       x="12"
+       y="12"
+       width="208"
+       height="208"
+       filterUnits="userSpaceOnUse"
+       color-interpolation-filters="sRGB">
+      <feFlood
+         flood-opacity="0"
+         result="BackgroundImageFix"
+         id="feFlood8" />
+      <feColorMatrix
+         in="SourceAlpha"
+         type="matrix"
+         values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+         result="hardAlpha"
+         id="feColorMatrix8" />
+      <feOffset
+         dy="10"
+         id="feOffset8" />
+      <feGaussianBlur
+         stdDeviation="14"
+         id="feGaussianBlur8" />
+      <feComposite
+         in2="hardAlpha"
+         operator="out"
+         id="feComposite8" />
+      <feColorMatrix
+         type="matrix"
+         values="0 0 0 0 0.019 0 0 0 0 0.07 0 0 0 0 0.13 0 0 0 0.38 0"
+         id="feColorMatrix9" />
+      <feBlend
+         mode="normal"
+         in2="BackgroundImageFix"
+         result="effect1_dropShadow_1"
+         id="feBlend9" />
+      <feBlend
+         mode="normal"
+         in="SourceGraphic"
+         in2="effect1_dropShadow_1"
+         result="shape"
+         id="feBlend10" />
+    </filter>
+  </defs>
+  <!-- App mark -->
+  <!-- Open book -->
+  <!-- Bookmark / shiori -->
+  <!-- Japanese learning hints -->
+  <!-- Wordmark -->
+  <!-- Anki / SRS cue -->
+  <g
+     id="g21"
+     transform="translate(0,8)">
+    <rect
+       x="8"
+       y="1.4210855e-14"
+       width="224"
+       height="224"
+       rx="50.666668"
+       fill="url(#bg)"
+       id="rect10"
+       style="fill:url(#bg);stroke-width:1.33333" />
+    <path
+       d="m 48,66 c 0,-6.266667 5.066667,-11.333333 11.333333,-11.333333 h 49.999997 c 6.13334,0 11.2,2.666666 14.66667,7.066666 3.46667,-4.4 8.53333,-7.066666 14.66667,-7.066666 h 42 C 186.93333,54.666667 192,59.733333 192,66 v 99.33333 c 0,6.66667 -5.33333,12 -12,12 h -42 c -5.46667,0 -10,2.8 -14,7.2 -4,-4.4 -8.53333,-7.2 -14,-7.2 H 60 c -6.666667,0 -12,-5.33333 -12,-12 z"
+       fill="#eaf8ff"
+       fill-opacity="0.92"
+       id="path11"
+       style="stroke-width:1.33333" />
+    <path
+       d="M 124,62.666667 V 184"
+       stroke="#173b50"
+       stroke-opacity="0.42"
+       stroke-width="4"
+       stroke-linecap="round"
+       id="path12" />
+    <path
+       d="M 66.666667,84 H 102.66667 M 66.666667,106.66667 H 100 m -33.333333,22.66666 h 28 M 145.33333,85.333333 h 28 m -28,22.666667 h 25.33334 m -25.33334,22.66667 H 164"
+       stroke="#173b50"
+       stroke-opacity="0.34"
+       stroke-width="5.33333"
+       stroke-linecap="round"
+       id="path13" />
+    <path
+       d="M 138.66667,41.333333 H 180 c 5.86667,0 10.66667,4.8 10.66667,10.666667 v 112 l -26,-16.26667 -26,16.26667 z"
+       fill="url(#blue)"
+       id="path14"
+       style="fill:url(#blue);stroke-width:1.33333" />
+    <path
+       d="M 138.66667,41.333333 H 180 c 5.86667,0 10.66667,4.8 10.66667,10.666667 v 112 l -26,-16.26667 -26,16.26667 z"
+       stroke="#bbd9ff"
+       stroke-opacity="0.45"
+       stroke-width="2"
+       id="path15" />
+    <path
+       d="M 153.33333,73.333333 H 176 m -22.66667,21.333334 h 17.33334"
+       stroke="#ffffff"
+       stroke-opacity="0.75"
+       stroke-width="5.33333"
+       stroke-linecap="round"
+       id="path16" />
+    <circle
+       cx="69.333336"
+       cy="37.333332"
+       r="22.666666"
+       fill="#122D42"
+       stroke="#8BDDF5"
+       stroke-opacity="0.38"
+       stroke-width="2"
+       id="circle16"
+       style="fill:#122d42;stroke:#8bddf5;stroke-opacity:1" />
+    <circle
+       cx="202.66667"
+       cy="32"
+       r="9.333333"
+       fill="#7cb7ff"
+       id="circle17"
+       style="stroke-width:1.33333" />
+    <circle
+       cx="38.666668"
+       cy="188"
+       r="6.6666665"
+       fill="#80c7dd"
+       id="circle18"
+       style="stroke-width:1.33333" />
+    <text
+       xml:space="preserve"
+       style="font-size:31.7349px;font-family:Poppins;-inkscape-font-specification:Poppins;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#80c7dd;fill-opacity:1;stroke-width:1.64172;stroke-linecap:round"
+       x="69.118446"
+       y="48.771778"
+       id="text21"
+       transform="scale(1.0121512,0.98799468)"><tspan
+         sodipodi:role="line"
+         id="tspan21"
+         x="69.118446"
+         y="48.771778"
+         style="stroke-width:1.64172">栞</tspan></text>
+  </g>
+  <metadata
+     id="metadata21">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>Shiori logo</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

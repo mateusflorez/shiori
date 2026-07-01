@@ -1,0 +1,1010 @@
+:root {
+  color: #e6edf7;
+  background: #0b1220;
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+.shiori-app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, #0b1220 0%, #122a34 48%, #0e1424 100%);
+}
+
+.shiori-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 12px;
+  color: #e6edf7;
+  background: rgba(10, 16, 28, 0.86);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.shiori-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shiori-toolbar-title {
+  min-width: 0;
+  color: #f8fbff;
+  font-size: 13px;
+  font-weight: 750;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shiori-toolbar button,
+.shiori-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f6cf6, #1f55d6);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+  box-shadow: 0 10px 22px rgba(32, 91, 222, 0.28);
+  white-space: nowrap;
+}
+
+.shiori-toolbar .shiori-icon-button {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  color: #dbe8ff;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+.shiori-toolbar button:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.shiori-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.shiori-page-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 8px;
+  color: #b9c6da;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shiori-page-controls input {
+  width: 58px;
+  height: 26px;
+  padding: 2px 6px;
+  color: #f8fbff;
+  background: rgba(7, 12, 22, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  text-align: center;
+}
+
+.shiori-page-controls strong {
+  color: #a7b6cc;
+  font-size: 12px;
+}
+
+.shiori-progress-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  color: #b9c6da;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shiori-progress-control strong {
+  color: #f8fbff;
+  font-size: 12px;
+}
+
+.shiori-zoom-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 36px;
+  color: #f8fbff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.shiori-alert {
+  flex: 0 0 auto;
+  margin: 10px 12px 0;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.shiori-alert.success {
+  color: #ccfbf1;
+  background: rgba(15, 118, 110, 0.32);
+  border-color: rgba(94, 234, 212, 0.36);
+}
+
+.shiori-alert.danger {
+  color: #ffe4e6;
+  background: rgba(185, 28, 28, 0.32);
+  border-color: rgba(251, 113, 133, 0.4);
+}
+
+.shiori-home {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 28px clamp(18px, 4vw, 46px) 38px;
+  overflow-y: auto;
+  color: #e6edf7;
+  background:
+    linear-gradient(135deg, rgba(11, 18, 32, 0.98) 0%, rgba(16, 47, 57, 0.96) 48%, rgba(14, 20, 36, 0.98) 100%);
+}
+
+.shiori-home-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  width: min(100%, 1160px);
+  margin: 0 auto 28px;
+}
+
+.shiori-home-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.shiori-home-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+}
+
+.shiori-home-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.shiori-home-kicker {
+  display: block;
+  margin-bottom: 2px;
+  color: #91a6c2;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.shiori-home h1 {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 820;
+  letter-spacing: 0;
+}
+
+.shiori-home p {
+  max-width: 540px;
+  margin: 7px 0 0;
+  color: #a7b6cc;
+  font-size: 13px;
+}
+
+.shiori-home-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.shiori-home-actions button,
+.shiori-home-empty button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 11px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f6cf6, #1f55d6);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+  box-shadow: 0 12px 24px rgba(32, 91, 222, 0.28);
+}
+
+.shiori-home-actions button.secondary {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  color: #dbe8ff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.shiori-home-actions button:disabled,
+.shiori-home-empty button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.shiori-library-heading {
+  display: flex;
+  width: min(100%, 1160px);
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: 0 auto 12px;
+}
+
+.shiori-library-heading h2 {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.shiori-library-heading span {
+  color: #a7b6cc;
+  font-size: 12px;
+}
+
+.shiori-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
+  gap: 18px;
+  align-items: start;
+  width: min(100%, 1160px);
+  margin: 0 auto;
+}
+
+.shiori-recent-card {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 10px;
+  color: #e6edf7;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.shiori-recent-card:hover,
+.shiori-recent-card:focus-visible {
+  border-color: rgba(96, 165, 250, 0.56);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.3);
+  outline: 0;
+  transform: translateY(-2px);
+}
+
+.shiori-document-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.48 / 1;
+  overflow: hidden;
+  background: #132033;
+  border-radius: 8px;
+}
+
+.shiori-document-preview::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.shiori-document-preview.is-epub::before {
+  background:
+    linear-gradient(135deg, rgba(20, 83, 78, 0.95), rgba(19, 32, 51, 0.86) 62%, rgba(180, 83, 9, 0.72));
+}
+
+.shiori-document-preview.is-pdf::before {
+  background:
+    linear-gradient(135deg, rgba(55, 65, 81, 0.95), rgba(30, 41, 59, 0.88) 58%, rgba(33, 86, 217, 0.62));
+}
+
+.shiori-preview-image {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  object-fit: contain;
+  background: rgba(226, 232, 240, 0.88);
+}
+
+.shiori-document-preview.has-thumbnail::before {
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(7, 12, 22, 0.06) 0%, rgba(7, 12, 22, 0.48) 100%);
+}
+
+.shiori-preview-surface {
+  position: absolute;
+  z-index: 3;
+  inset: 12px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.shiori-document-preview.has-thumbnail .shiori-preview-surface {
+  inset: auto 10px 10px;
+  grid-template-rows: auto auto;
+  gap: 5px;
+  padding: 8px 9px;
+  background: rgba(7, 12, 22, 0.66);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.shiori-document-preview.has-thumbnail .shiori-preview-lines,
+.shiori-document-preview.has-thumbnail .shiori-preview-columns {
+  display: none;
+}
+
+.shiori-document-preview.has-thumbnail .shiori-preview-title {
+  font-size: 12px;
+  line-height: 1.2;
+  -webkit-line-clamp: 1;
+}
+
+.shiori-preview-type {
+  justify-self: start;
+  padding: 3px 6px;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(9, 14, 24, 0.28);
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.shiori-preview-title {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 820;
+  line-height: 1.23;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.shiori-preview-lines {
+  display: grid;
+  align-content: end;
+  gap: 5px;
+}
+
+.shiori-preview-lines i {
+  display: block;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.68);
+  border-radius: 4px;
+}
+
+.shiori-preview-lines i:nth-child(1) {
+  width: 74%;
+}
+
+.shiori-preview-lines i:nth-child(2) {
+  width: 88%;
+}
+
+.shiori-preview-lines i:nth-child(3) {
+  width: 62%;
+}
+
+.shiori-preview-lines i:nth-child(4) {
+  width: 80%;
+}
+
+.shiori-preview-columns {
+  display: flex;
+  min-height: 0;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.shiori-preview-columns i {
+  display: block;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.1;
+  text-orientation: mixed;
+  writing-mode: vertical-rl;
+}
+
+.shiori-recent-info {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.shiori-recent-kind {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  color: #78a8ff;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.shiori-recent-title {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fbff;
+  font-size: 14px;
+  font-weight: 770;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.shiori-recent-path {
+  min-width: 0;
+  overflow: hidden;
+  color: #a7b6cc;
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shiori-recent-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #a7b6cc;
+  font-size: 12px;
+}
+
+.shiori-home-empty {
+  display: grid;
+  max-width: 420px;
+  min-height: 320px;
+  margin: 54px auto 0;
+  padding: 28px;
+  color: #a7b6cc;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  place-items: center;
+  place-content: center;
+  text-align: center;
+}
+
+.shiori-home-empty-icon {
+  display: inline-flex;
+  width: 64px;
+  height: 64px;
+  align-items: center;
+  justify-content: center;
+  color: #dbe8ff;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+}
+
+.shiori-home-empty h2 {
+  margin: 12px 0 4px;
+  color: #f8fbff;
+  font-size: 18px;
+}
+
+.shiori-home-empty p {
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+
+.shiori-workspace {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 286px minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px;
+  gap: 12px;
+  background:
+    linear-gradient(135deg, rgba(11, 18, 32, 0.98) 0%, rgba(16, 47, 57, 0.94) 52%, rgba(14, 20, 36, 0.98) 100%);
+}
+
+.shiori-workspace.sidebar-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shiori-sidebar {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  color: #e6edf7;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.shiori-sidebar section {
+  padding: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shiori-sidebar section:last-child {
+  border-bottom: 0;
+}
+
+.shiori-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #78a8ff;
+}
+
+.shiori-section-title h2 {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.shiori-muted {
+  margin: 0;
+  color: #a7b6cc;
+  font-size: 12px;
+}
+
+.shiori-document-list {
+  display: grid;
+  gap: 7px;
+}
+
+.shiori-document-list button {
+  display: grid;
+  width: 100%;
+  gap: 2px;
+  padding: 9px 10px;
+  color: #e6edf7;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.shiori-document-list button.is-active,
+.shiori-document-list button:hover {
+  color: #ffffff;
+  background: rgba(47, 108, 246, 0.22);
+  border-color: rgba(120, 168, 255, 0.46);
+}
+
+.shiori-document-list strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shiori-document-list span,
+.shiori-document-list small {
+  color: #a7b6cc;
+  font-size: 11px;
+}
+
+.shiori-outline ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shiori-outline li ul {
+  margin-top: 2px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.shiori-outline button {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 8px;
+  color: #c7d3e6;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.shiori-outline button:hover:not(:disabled),
+.shiori-outline button.is-active {
+  color: #ffffff;
+  background: rgba(47, 108, 246, 0.22);
+}
+
+.shiori-outline button:disabled {
+  color: rgba(199, 211, 230, 0.42);
+  cursor: default;
+}
+
+.shiori-viewport {
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  background: rgba(7, 12, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.24);
+}
+
+.shiori-viewport.epub-viewport {
+  overflow: hidden;
+  background: rgba(7, 12, 22, 0.72);
+}
+
+.shiori-empty-state {
+  display: grid;
+  min-height: calc(100vh - 110px);
+  padding: 32px;
+  color: #a7b6cc;
+  place-content: center;
+  text-align: center;
+}
+
+.shiori-empty-state h2 {
+  margin: 0 0 8px;
+  color: #f8fbff;
+  font-size: 22px;
+}
+
+.shiori-empty-state p {
+  max-width: 420px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.pdf-viewer-stage {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 18px;
+  min-width: max-content;
+  min-height: 100%;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(226, 232, 240, 0.1), rgba(148, 163, 184, 0.06));
+}
+
+.pdf-page {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+.pdf-page canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  transform-origin: 0 0;
+}
+
+.pdf-page-number {
+  position: absolute;
+  z-index: 5;
+  right: 8px;
+  bottom: 8px;
+  min-width: 28px;
+  padding: 3px 6px;
+  color: #657085;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #d8dee9;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pdf-page-placeholder {
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+  min-height: 36px;
+  padding: 8px 12px;
+  color: #7b8798;
+  background: #f7f8fb;
+  border: 1px solid #e4e8f0;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.pdf-loading {
+  position: sticky;
+  z-index: 2;
+  top: 12px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  color: #f8fbff;
+  background: rgba(7, 12, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.epub-viewer-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding: 26px 34px;
+  background:
+    linear-gradient(180deg, rgba(226, 232, 240, 0.1), rgba(148, 163, 184, 0.06));
+}
+
+.epub-scroll-root {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  overflow: auto;
+  background: rgba(7, 12, 22, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  scrollbar-gutter: stable;
+}
+
+.epub-document-flow {
+  display: grid;
+  align-content: start;
+  width: min(100%, 620px);
+  min-height: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.34);
+}
+
+.epub-section-frame {
+  position: relative;
+  min-height: 180px;
+  background: #ffffff;
+  border-bottom: 4px solid #e9edf3;
+}
+
+.epub-section-frame iframe {
+  display: block;
+  width: 100%;
+  background: #ffffff;
+  border: 0 !important;
+  overflow: hidden;
+}
+
+.epub-section-placeholder {
+  display: grid;
+  min-height: 180px;
+  color: #657085;
+  font-size: 12px;
+  font-weight: 750;
+  place-items: center;
+}
+
+.epub-loading {
+  position: absolute;
+  z-index: 5;
+  top: 42px;
+  left: 50%;
+  padding: 8px 12px;
+  color: #f8fbff;
+  background: rgba(7, 12, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+  font-size: 12px;
+  font-weight: 800;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 900px) {
+  .shiori-home {
+    padding: 18px 16px 28px;
+  }
+
+  .shiori-home-header {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    margin-bottom: 22px;
+  }
+
+  .shiori-home-brand {
+    align-items: flex-start;
+  }
+
+  .shiori-home h1 {
+    font-size: 26px;
+  }
+
+  .shiori-home-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .shiori-home-primary {
+    flex: 1 1 180px;
+  }
+
+  .shiori-recent-grid {
+    grid-template-columns: repeat(auto-fill, minmax(182px, 1fr));
+    gap: 14px;
+  }
+
+  .shiori-preview-surface {
+    inset: 10px;
+    padding: 10px;
+  }
+
+  .shiori-toolbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .shiori-toolbar-group {
+    justify-content: space-between;
+  }
+
+  .shiori-toolbar-title {
+    order: -1;
+    text-align: left;
+  }
+
+  .shiori-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .shiori-sidebar {
+    max-height: 320px;
+  }
+
+  .pdf-viewer-stage {
+    padding: 14px;
+  }
+
+  .epub-viewer-stage {
+    padding: 14px;
+  }
+}
