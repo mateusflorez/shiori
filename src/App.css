@@ -1238,14 +1238,25 @@ button {
   opacity: 0.42;
 }
 
-.pdf-text-layer {
+.textLayer.pdf-text-layer {
   position: absolute;
   inset: 0;
   z-index: 3;
   overflow: hidden;
+  color-scheme: only light;
+  forced-color-adjust: none;
+  letter-spacing: normal;
   opacity: 1;
   line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
   transform-origin: 0 0;
+  word-spacing: normal;
+}
+
+.textLayer.pdf-text-layer :is(span, br) {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .pdf-page-number {

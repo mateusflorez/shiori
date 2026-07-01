@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type MouseEvent,
+} from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
@@ -57,6 +65,15 @@ type ParsedPdfHighlight = {
   id: string;
   color: string;
   rects: HighlightRect[];
+};
+
+type VisualTextChar = {
+  text: string;
+  pageIndex: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 };
 
 async function resolveOutlinePageIndex(pdf: PDFDocumentProxy, dest: PdfOutlineNode["dest"]) {
@@ -128,6 +145,143 @@ function normalizeSelectedText(text: string) {
   return text.replace(/\s+/g, " ").trim();
 }
 
+function isMeaningfulRect(rect: DOMRect) {
+  return rect.width > 0.5 && rect.height > 0.5;
+}
+
+function rectCenter(rect: DOMRect) {
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+}
+
+function pointInRect(point: { x: number; y: number }, rect: DOMRect) {
+  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+}
+
+function characterOffsets(text: string) {
+  const characters = Array.from(text);
+  let offset = 0;
+
+  return characters.map((character) => {
+    const start = offset;
+    offset += character.length;
+
+    return {
+      character,
+      start,
+      end: offset,
+    };
+  });
+}
+
+function collectVisualSelectedText(stage: HTMLElement | null) {
+  const selection = window.getSelection();
+  if (!stage || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return null;
+  }
+
+  const ranges = Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index));
+  if (!ranges.every((range) => stage.contains(range.commonAncestorContainer))) {
+    return null;
+  }
+
+  const selectionRects = ranges
+    .flatMap((range) => Array.from(range.getClientRects()))
+    .filter(isMeaningfulRect);
+
+  if (selectionRects.length === 0) {
+    return null;
+  }
+
+  const selectedCharacters: VisualTextChar[] = [];
+
+  for (const pageElement of Array.from(stage.querySelectorAll<HTMLElement>("[data-page-index]"))) {
+    const pageIndex = Number(pageElement.dataset.pageIndex);
+    if (!Number.isInteger(pageIndex)) {
+      continue;
+    }
+
+    for (const span of Array.from(pageElement.querySelectorAll<HTMLSpanElement>(".pdf-text-layer span"))) {
+      const textNode = Array.from(span.childNodes).find((node): node is Text => node.nodeType === Node.TEXT_NODE);
+      if (!textNode) {
+        continue;
+      }
+
+      const text = textNode.data;
+      if (!text) {
+        continue;
+      }
+
+      for (const { character, start, end } of characterOffsets(text)) {
+        const range = document.createRange();
+        range.setStart(textNode, start);
+        range.setEnd(textNode, end);
+
+        const characterRect = Array.from(range.getClientRects()).find(isMeaningfulRect);
+        range.detach();
+
+        if (!characterRect) {
+          continue;
+        }
+
+        const center = rectCenter(characterRect);
+        if (!selectionRects.some((rect) => pointInRect(center, rect))) {
+          continue;
+        }
+
+        selectedCharacters.push({
+          text: character,
+          pageIndex,
+          left: characterRect.left,
+          top: characterRect.top,
+          width: characterRect.width,
+          height: characterRect.height,
+        });
+      }
+    }
+  }
+
+  if (selectedCharacters.length === 0) {
+    return null;
+  }
+
+  selectedCharacters.sort((left, right) => {
+    if (left.pageIndex !== right.pageIndex) {
+      return left.pageIndex - right.pageIndex;
+    }
+
+    const lineTolerance = Math.max(3, Math.min(left.height, right.height) * 0.7);
+    if (Math.abs(left.top - right.top) > lineTolerance) {
+      return left.top - right.top;
+    }
+
+    return left.left - right.left;
+  });
+
+  const lines: VisualTextChar[][] = [];
+  for (const character of selectedCharacters) {
+    const previousLine = lines[lines.length - 1];
+    const previousCharacter = previousLine?.[previousLine.length - 1];
+    const lineTolerance = previousCharacter ? Math.max(3, previousCharacter.height * 0.7) : 3;
+
+    if (
+      !previousLine ||
+      !previousCharacter ||
+      previousCharacter.pageIndex !== character.pageIndex ||
+      Math.abs(previousCharacter.top - character.top) > lineTolerance
+    ) {
+      lines.push([character]);
+      continue;
+    }
+
+    previousLine.push(character);
+  }
+
+  return lines.map((line) => line.map((character) => character.text).join("")).join("\n");
+}
+
 function relativeRect(rect: DOMRect, containerRect: DOMRect): HighlightRect | null {
   if (rect.width < 1 || rect.height < 1 || containerRect.width < 1 || containerRect.height < 1) {
     return null;
@@ -152,7 +306,7 @@ function relativeRect(rect: DOMRect, containerRect: DOMRect): HighlightRect | nu
 
 function capturePdfTextSelection(stage: HTMLElement | null): ReaderTextSelection | null {
   const selection = window.getSelection();
-  const selectedText = normalizeSelectedText(selection?.toString() ?? "");
+  const selectedText = normalizeSelectedText(collectVisualSelectedText(stage) ?? selection?.toString() ?? "");
 
   if (!stage || !selection || selection.rangeCount === 0 || selection.isCollapsed || !selectedText) {
     return null;
@@ -240,8 +394,8 @@ function PdfPageView({
   const renderTokenRef = useRef(0);
   const [rendered, setRendered] = useState(false);
 
-  const scaledWidth = Math.floor(baseSize.width * zoom);
-  const scaledHeight = Math.floor(baseSize.height * zoom);
+  const scaledWidth = baseSize.width * zoom;
+  const scaledHeight = baseSize.height * zoom;
   const pageHighlights = useMemo(() => parsePdfHighlights(highlights, pageIndex), [highlights, pageIndex]);
 
   useEffect(() => {
@@ -275,17 +429,19 @@ function PdfPageView({
           throw new Error("Canvas indisponivel para renderizar PDF.");
         }
 
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        canvas.width = Math.ceil(viewport.width * outputScale);
+        canvas.height = Math.ceil(viewport.height * outputScale);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
 
         context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
         context.clearRect(0, 0, viewport.width, viewport.height);
 
         textLayer.replaceChildren();
-        textLayer.style.width = `${Math.floor(viewport.width)}px`;
-        textLayer.style.height = `${Math.floor(viewport.height)}px`;
+        textLayer.style.width = `${viewport.width}px`;
+        textLayer.style.height = `${viewport.height}px`;
+        textLayer.style.setProperty("--scale-factor", String(viewport.scale));
+        textLayer.style.setProperty("--total-scale-factor", String(viewport.scale));
 
         const renderTask = page.render({
           canvas,
@@ -435,6 +591,16 @@ function PdfViewer({
     onTextSelection(capturePdfTextSelection(stageRef.current));
   }, [onTextSelection]);
 
+  const handleCopy = useCallback((event: ClipboardEvent<HTMLDivElement>) => {
+    const visualText = collectVisualSelectedText(stageRef.current);
+    if (!visualText) {
+      return;
+    }
+
+    event.preventDefault();
+    event.clipboardData.setData("text/plain", visualText);
+  }, []);
+
   const handleLookupPointerDown = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       if (!event.shiftKey) {
@@ -498,8 +664,8 @@ function PdfViewer({
           const page = await loadedPdf.getPage(pageNumber);
           const viewport = page.getViewport({ scale: 1 });
           sizes.push({
-            width: Math.floor(viewport.width),
-            height: Math.floor(viewport.height),
+            width: viewport.width,
+            height: viewport.height,
           });
         }
 
@@ -589,6 +755,7 @@ function PdfViewer({
       ref={stageRef}
       className="pdf-viewer-stage"
       aria-busy={loading}
+      onCopy={handleCopy}
       onKeyUp={reportTextSelection}
       onMouseDown={handleLookupPointerDown}
       onMouseUp={reportTextSelection}
