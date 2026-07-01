@@ -399,105 +399,90 @@ button {
 
 .shiori-document-preview {
   position: relative;
-  display: block;
+  display: grid;
   width: 100%;
   aspect-ratio: 1.48 / 1;
   overflow: hidden;
+  padding: 12px;
   background: #132033;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -28px 52px rgba(7, 12, 22, 0.18);
+  place-items: center;
 }
 
 .shiori-document-preview::before {
   position: absolute;
   inset: 0;
   content: "";
+  opacity: 0.96;
 }
 
 .shiori-document-preview.is-epub::before {
   background:
-    linear-gradient(135deg, rgba(20, 83, 78, 0.95), rgba(19, 32, 51, 0.86) 62%, rgba(180, 83, 9, 0.72));
+    radial-gradient(circle at 28% 16%, rgba(94, 234, 212, 0.24), transparent 34%),
+    linear-gradient(135deg, rgba(20, 83, 78, 0.95), rgba(19, 32, 51, 0.86) 60%, rgba(180, 83, 9, 0.68));
 }
 
 .shiori-document-preview.is-pdf::before {
   background:
+    radial-gradient(circle at 30% 12%, rgba(226, 232, 240, 0.22), transparent 30%),
     linear-gradient(135deg, rgba(55, 65, 81, 0.95), rgba(30, 41, 59, 0.88) 58%, rgba(33, 86, 217, 0.62));
+}
+
+.shiori-document-preview::after {
+  position: absolute;
+  z-index: 1;
+  inset: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 28px rgba(0, 0, 0, 0.18);
+  content: "";
+  pointer-events: none;
+}
+
+.shiori-document-preview.has-thumbnail::after {
+  inset: 10px;
+  background: linear-gradient(145deg, rgba(248, 250, 252, 0.08), rgba(7, 12, 22, 0.12));
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 30px rgba(0, 0, 0, 0.28);
 }
 
 .shiori-preview-image {
   position: absolute;
-  z-index: 1;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 8px;
-  object-fit: contain;
-  background: rgba(226, 232, 240, 0.88);
-}
-
-.shiori-document-preview.has-thumbnail::before {
   z-index: 2;
-  background:
-    linear-gradient(180deg, rgba(7, 12, 22, 0.06) 0%, rgba(7, 12, 22, 0.48) 100%);
+  inset: 10px;
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
+  object-fit: contain;
+  object-position: center;
+  border-radius: 6px;
+  filter: saturate(1.04) contrast(1.02);
 }
 
 .shiori-preview-surface {
   position: absolute;
-  z-index: 3;
-  inset: 12px;
+  z-index: 2;
+  inset: 14px;
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  gap: 8px;
+  align-content: end;
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
+    rgba(7, 12, 22, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 8px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(10px);
-}
-
-.shiori-document-preview.has-thumbnail .shiori-preview-surface {
-  inset: auto 10px 10px;
-  grid-template-rows: auto auto;
-  gap: 5px;
-  padding: 8px 9px;
-  background: rgba(7, 12, 22, 0.66);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.shiori-document-preview.has-thumbnail .shiori-preview-lines,
-.shiori-document-preview.has-thumbnail .shiori-preview-columns {
-  display: none;
-}
-
-.shiori-document-preview.has-thumbnail .shiori-preview-title {
-  font-size: 12px;
-  line-height: 1.2;
-  -webkit-line-clamp: 1;
-}
-
-.shiori-preview-type {
-  justify-self: start;
-  padding: 3px 6px;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(9, 14, 24, 0.28);
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0;
-}
-
-.shiori-preview-title {
-  display: -webkit-box;
-  min-width: 0;
-  overflow: hidden;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 820;
-  line-height: 1.23;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 14px 24px rgba(0, 0, 0, 0.16);
 }
 
 .shiori-preview-lines {

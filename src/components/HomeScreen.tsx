@@ -251,16 +251,15 @@ function DocumentPreview({ document }: { document: DocumentRecord }) {
     >
       {thumbnailUrl ? (
         <img className="shiori-preview-image" draggable={false} src={thumbnailUrl} alt="" />
-      ) : null}
-      <span className="shiori-preview-surface">
-        <span className="shiori-preview-type">{document.kind.toUpperCase()}</span>
-        <span className="shiori-preview-title">{document.title}</span>
-        <span className={isEpub ? "shiori-preview-columns" : "shiori-preview-lines"}>
-          {previewLines.map((line, index) => (
-            <i key={`${document.id}-preview-${index}`}>{line}</i>
-          ))}
+      ) : (
+        <span className="shiori-preview-surface">
+          <span className={isEpub ? "shiori-preview-columns" : "shiori-preview-lines"}>
+            {previewLines.map((line, index) => (
+              <i key={`${document.id}-preview-${index}`}>{line}</i>
+            ))}
+          </span>
         </span>
-      </span>
+      )}
     </span>
   );
 }
