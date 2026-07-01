@@ -62,7 +62,9 @@ type LookupPopupState = {
   loading: boolean;
   error: string | null;
   result: LookupResult | null;
-} | null;
+};
+
+type LookupNavigationMode = "reset" | "append";
 
 const DEFAULT_ZOOM = 1;
 
@@ -81,7 +83,9 @@ function ShioriShell() {
   const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([]);
   const [highlights, setHighlights] = useState<HighlightRecord[]>([]);
   const [dictionarySources, setDictionarySources] = useState<DictionarySourceRecord[]>([]);
-  const [lookupPopup, setLookupPopup] = useState<LookupPopupState>(null);
+  const [lookupPopup, setLookupPopup] = useState<LookupPopupState | null>(null);
+  const [lookupHistory, setLookupHistory] = useState<LookupPopupState[]>([]);
+  const [lookupHistoryIndex, setLookupHistoryIndex] = useState(-1);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dictionaryDownloadKey, setDictionaryDownloadKey] = useState<string | null>(null);
   const [dictionaryDownloadProgress, setDictionaryDownloadProgress] =
@@ -148,6 +152,8 @@ function ShioriShell() {
     setBookmarks([]);
     setHighlights([]);
     setLookupPopup(null);
+    setLookupHistory([]);
+    setLookupHistoryIndex(-1);
     setSettingsOpen(false);
     setDictionaryDownloadProgress(null);
     setActiveSelection(null);
@@ -181,6 +187,9 @@ function ShioriShell() {
         setEpubToc([]);
         setBookmarks([]);
         setHighlights([]);
+        setLookupPopup(null);
+        setLookupHistory([]);
+        setLookupHistoryIndex(-1);
         setActiveSelection(null);
         setPageCount(0);
         setZoom(savedZoom);
@@ -253,6 +262,8 @@ function ShioriShell() {
 
   const openSettings = useCallback(() => {
     setLookupPopup(null);
+    setLookupHistory([]);
+    setLookupHistoryIndex(-1);
     setSettingsOpen(true);
   }, []);
 
@@ -386,18 +397,40 @@ function ShioriShell() {
     [activeDocument?.kind],
   );
 
+  const rememberLookupState = useCallback(
+    (state: LookupPopupState, mode: LookupNavigationMode) => {
+      const baseHistory =
+        mode === "append" && lookupHistoryIndex >= 0
+          ? lookupHistory.slice(0, lookupHistoryIndex + 1)
+          : [];
+      const nextHistory = [...baseHistory, state];
+
+      setLookupHistory(nextHistory);
+      setLookupHistoryIndex(nextHistory.length - 1);
+    },
+    [lookupHistory, lookupHistoryIndex],
+  );
+
   const runLookup = useCallback(
-    async (request: ReaderLookupRequest) => {
+    async (request: ReaderLookupRequest, mode: LookupNavigationMode = "reset") => {
       if (dictionarySources.length === 0) {
-        setLookupPopup({
+        const errorState: LookupPopupState = {
           query: request.query,
           x: request.clientX,
           y: request.clientY,
           loading: false,
           error: "Abra Configuracoes e baixe Jitendex, KANJIDIC ou Jiten antes de consultar.",
           result: null,
-        });
+        };
+
+        setLookupPopup(errorState);
+        rememberLookupState(errorState, mode);
         return;
+      }
+
+      if (mode === "reset") {
+        setLookupHistory([]);
+        setLookupHistoryIndex(-1);
       }
 
       const token = lookupTokenRef.current + 1;
@@ -423,30 +456,36 @@ function ShioriShell() {
           return;
         }
 
-        setLookupPopup({
+        const loadedState: LookupPopupState = {
           query: request.query,
           x: request.clientX,
           y: request.clientY,
           loading: false,
           error: null,
           result,
-        });
+        };
+
+        setLookupPopup(loadedState);
+        rememberLookupState(loadedState, mode);
       } catch (error) {
         if (lookupTokenRef.current !== token) {
           return;
         }
 
-        setLookupPopup({
+        const errorState: LookupPopupState = {
           query: request.query,
           x: request.clientX,
           y: request.clientY,
           loading: false,
           error: error instanceof Error ? error.message : "Nao foi possivel consultar o dicionario.",
           result: null,
-        });
+        };
+
+        setLookupPopup(errorState);
+        rememberLookupState(errorState, mode);
       }
     },
-    [activeDocument?.id, dictionarySources.length],
+    [activeDocument?.id, dictionarySources.length, rememberLookupState],
   );
 
   const lookupKanjiFromPopup = useCallback(
@@ -461,9 +500,25 @@ function ShioriShell() {
         selectedText: character,
         clientX: lookupPopup.x,
         clientY: lookupPopup.y,
-      });
+      }, "append");
     },
     [lookupPopup, runLookup],
+  );
+
+  const navigateLookupHistory = useCallback(
+    (direction: -1 | 1) => {
+      const nextIndex = lookupHistoryIndex + direction;
+      const nextState = lookupHistory[nextIndex];
+
+      if (!nextState) {
+        return;
+      }
+
+      lookupTokenRef.current += 1;
+      setLookupHistoryIndex(nextIndex);
+      setLookupPopup(nextState);
+    },
+    [lookupHistory, lookupHistoryIndex],
   );
 
   const requestEpubCommand = useCallback((action: EpubViewerCommand["action"]) => {
@@ -909,7 +964,17 @@ function ShioriShell() {
           query={lookupPopup.query}
           x={lookupPopup.x}
           y={lookupPopup.y}
-          onClose={() => setLookupPopup(null)}
+          canNavigateBack={!lookupPopup.loading && lookupHistoryIndex > 0}
+          canNavigateForward={
+            !lookupPopup.loading && lookupHistoryIndex >= 0 && lookupHistoryIndex < lookupHistory.length - 1
+          }
+          onClose={() => {
+            setLookupPopup(null);
+            setLookupHistory([]);
+            setLookupHistoryIndex(-1);
+          }}
+          onNavigateBack={() => navigateLookupHistory(-1)}
+          onNavigateForward={() => navigateLookupHistory(1)}
           onLookupKanji={lookupKanjiFromPopup}
         />
       ) : null}

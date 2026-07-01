@@ -9,7 +9,11 @@ type DictionaryPopupProps = {
   query: string;
   x: number;
   y: number;
+  canNavigateBack: boolean;
+  canNavigateForward: boolean;
   onClose: () => void;
+  onNavigateBack: () => void;
+  onNavigateForward: () => void;
   onLookupKanji: (character: string) => void;
 };
 
@@ -90,7 +94,11 @@ function DictionaryPopup({
   query,
   x,
   y,
+  canNavigateBack,
+  canNavigateForward,
   onClose,
+  onNavigateBack,
+  onNavigateForward,
   onLookupKanji,
 }: DictionaryPopupProps) {
   const position = popupPosition(x, y);
@@ -105,9 +113,23 @@ function DictionaryPopup({
       aria-label="Lookup de dicionario"
     >
       <header>
-        <div className="shiori-dictionary-nav" aria-hidden="true">
-          <ChevronLeft size={18} />
-          <ChevronRight size={18} />
+        <div className="shiori-dictionary-nav">
+          <button
+            aria-label="Voltar lookup"
+            disabled={!canNavigateBack}
+            type="button"
+            onClick={onNavigateBack}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            aria-label="Avancar lookup"
+            disabled={!canNavigateForward}
+            type="button"
+            onClick={onNavigateForward}
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
         <button aria-label="Fechar lookup" type="button" onClick={onClose}>
           <X size={18} />
