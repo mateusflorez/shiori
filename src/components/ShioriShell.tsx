@@ -6,19 +6,31 @@ import PdfViewer from "./PdfViewer";
 import Sidebar from "./Sidebar";
 import Toolbar from "./Toolbar";
 import {
+  createBookmark,
+  createHighlight,
+  deleteBookmark,
+  deleteHighlight,
   getReadingPosition,
+  listBookmarks,
+  listHighlights,
   listRecentDocuments,
   openDocumentRecord,
   readDocumentBytes,
   saveReadingPosition,
+  updateBookmarkNote,
+  updateHighlightNote,
 } from "../services/tauri";
 import type {
+  BookmarkRecord,
   DocumentRecord,
   EpubNavigationTarget,
   EpubViewerCommand,
   EpubViewerLocation,
   EpubTocItem,
+  HighlightColor,
+  HighlightRecord,
   PdfOutlineItem,
+  ReaderTextSelection,
 } from "../types";
 import { clamp } from "../utils/format";
 
@@ -45,6 +57,10 @@ function ShioriShell() {
   const [documentData, setDocumentData] = useState<Uint8Array | null>(null);
   const [outline, setOutline] = useState<PdfOutlineItem[]>([]);
   const [epubToc, setEpubToc] = useState<EpubTocItem[]>([]);
+  const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([]);
+  const [highlights, setHighlights] = useState<HighlightRecord[]>([]);
+  const [activeSelection, setActiveSelection] = useState<ReaderTextSelection | null>(null);
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("#facc15");
   const [pageCount, setPageCount] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [scrollTarget, setScrollTarget] = useState<ScrollTarget | null>(null);
@@ -75,6 +91,16 @@ function ShioriShell() {
     return recentDocuments;
   }, []);
 
+  const loadAnnotations = useCallback(async (documentId: string) => {
+    const [nextBookmarks, nextHighlights] = await Promise.all([
+      listBookmarks(documentId),
+      listHighlights(documentId),
+    ]);
+
+    setBookmarks(nextBookmarks);
+    setHighlights(nextHighlights);
+  }, []);
+
   const showError = useCallback((message: string) => {
     setAlert({ kind: "danger", message });
   }, []);
@@ -84,6 +110,9 @@ function ShioriShell() {
     setDocumentData(null);
     setOutline([]);
     setEpubToc([]);
+    setBookmarks([]);
+    setHighlights([]);
+    setActiveSelection(null);
     setPageCount(0);
     setPageIndex(0);
     setScrollTarget(null);
@@ -111,8 +140,20 @@ function ShioriShell() {
         setDocumentData(bytes);
         setOutline([]);
         setEpubToc([]);
+        setBookmarks([]);
+        setHighlights([]);
+        setActiveSelection(null);
         setPageCount(0);
         setZoom(savedZoom);
+
+        try {
+          await loadAnnotations(document.id);
+        } catch (error) {
+          setBookmarks([]);
+          setHighlights([]);
+          console.error("Failed to load annotations", error);
+          setAlert({ kind: "danger", message: "Documento aberto, mas nao foi possivel carregar anotacoes." });
+        }
 
         if (document.kind === "pdf") {
           const savedPageIndex = savedPosition?.pageIndex ?? 0;
@@ -147,7 +188,7 @@ function ShioriShell() {
         setLoading(false);
       }
     },
-    [showError],
+    [loadAnnotations, showError],
   );
 
   const refreshRecent = useCallback(async () => {
@@ -218,6 +259,18 @@ function ShioriShell() {
       token: epubTargetTokenRef.current,
     });
   }, []);
+
+  const handleTextSelection = useCallback(
+    (selection: ReaderTextSelection | null) => {
+      if (!selection || selection.documentKind !== activeDocument?.kind) {
+        setActiveSelection(null);
+        return;
+      }
+
+      setActiveSelection(selection);
+    },
+    [activeDocument?.kind],
+  );
 
   const requestEpubCommand = useCallback((action: EpubViewerCommand["action"]) => {
     epubCommandTokenRef.current += 1;
@@ -342,6 +395,140 @@ function ShioriShell() {
     }
   }
 
+  function currentLocation() {
+    if (!activeDocument) {
+      return null;
+    }
+
+    if (activeDocument.kind === "pdf") {
+      if (pageCount < 1) {
+        return null;
+      }
+
+      const locator = String(boundedPageIndex + 1);
+
+      return {
+        locatorType: "pdf_page" as const,
+        locator,
+        label: `Pagina ${locator}`,
+      };
+    }
+
+    if (!epubLocator) {
+      return null;
+    }
+
+    return {
+      locatorType: "epub_cfi" as const,
+      locator: epubLocator,
+      label: `EPUB ${Math.round(epubProgress * 100)}%`,
+    };
+  }
+
+  async function handleCreateBookmark() {
+    if (!activeDocument) {
+      return;
+    }
+
+    const location = currentLocation();
+    if (!location) {
+      showError("Nao foi possivel identificar a localizacao atual.");
+      return;
+    }
+
+    try {
+      const bookmark = await createBookmark({
+        documentId: activeDocument.id,
+        locatorType: location.locatorType,
+        locator: location.locator,
+        label: location.label,
+        note: null,
+      });
+      setBookmarks((current) => [...current, bookmark]);
+      setAlert({ kind: "success", message: "Favorito salvo." });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel salvar favorito.");
+    }
+  }
+
+  async function handleCreateHighlight() {
+    if (!activeDocument || !activeSelection) {
+      showError("Selecione um trecho antes de criar a marcacao.");
+      return;
+    }
+
+    try {
+      const highlight = await createHighlight({
+        documentId: activeDocument.id,
+        locatorType: activeSelection.locatorType,
+        locator: activeSelection.locator,
+        selectedText: activeSelection.selectedText,
+        contextBefore: null,
+        contextAfter: null,
+        rangeJson: activeSelection.rangeJson,
+        color: highlightColor,
+        note: null,
+      });
+      setHighlights((current) => [...current, highlight]);
+      setActiveSelection(null);
+      setAlert({ kind: "success", message: "Marcacao salva." });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel salvar marcacao.");
+    }
+  }
+
+  async function handleUpdateBookmarkNote(bookmarkId: string, note: string) {
+    try {
+      const updated = await updateBookmarkNote(bookmarkId, note.trim() || null);
+      setBookmarks((current) => current.map((bookmark) => (bookmark.id === updated.id ? updated : bookmark)));
+      setAlert({ kind: "success", message: "Nota do favorito salva." });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel salvar nota.");
+    }
+  }
+
+  async function handleUpdateHighlightNote(highlightId: string, note: string) {
+    try {
+      const updated = await updateHighlightNote(highlightId, note.trim() || null);
+      setHighlights((current) => current.map((highlight) => (highlight.id === updated.id ? updated : highlight)));
+      setAlert({ kind: "success", message: "Nota da marcacao salva." });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel salvar nota.");
+    }
+  }
+
+  async function handleDeleteBookmark(bookmarkId: string) {
+    try {
+      await deleteBookmark(bookmarkId);
+      setBookmarks((current) => current.filter((bookmark) => bookmark.id !== bookmarkId));
+      setAlert({ kind: "success", message: "Favorito removido." });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel remover favorito.");
+    }
+  }
+
+  async function handleDeleteHighlight(highlightId: string) {
+    try {
+      await deleteHighlight(highlightId);
+      setHighlights((current) => current.filter((highlight) => highlight.id !== highlightId));
+      setAlert({ kind: "success", message: "Marcacao removida." });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel remover marcacao.");
+    }
+  }
+
+  function navigateLocator(locatorType: "pdf_page" | "epub_cfi", locator: string) {
+    if (locatorType === "pdf_page") {
+      const pageNumber = Number(locator);
+      if (Number.isFinite(pageNumber)) {
+        requestPage(pageNumber - 1);
+      }
+      return;
+    }
+
+    requestEpubHref(locator);
+  }
+
   function handleViewportScroll() {
     if (!activeDocument || activeDocument.kind !== "pdf" || pageCount < 1) {
       return;
@@ -380,6 +567,8 @@ function ShioriShell() {
           isHome={isHome}
           canNavigatePrevious={canNavigatePrevious}
           canNavigateNext={canNavigateNext}
+          canCreateHighlight={Boolean(activeSelection)}
+          activeHighlightColor={highlightColor}
           onOpenFile={() => void chooseDocumentFile()}
           onRefresh={() => void refreshRecent()}
           onHome={resetShioriState}
@@ -401,6 +590,9 @@ function ShioriShell() {
             requestPage(boundedPageIndex + 1);
           }}
           onPageNumberChange={handlePageNumberChange}
+          onCreateBookmark={() => void handleCreateBookmark()}
+          onCreateHighlight={() => void handleCreateHighlight()}
+          onChangeHighlightColor={setHighlightColor}
           onZoomIn={() => handleZoomChange(clamp(Number((zoom + 0.1).toFixed(2)), 0.4, 3))}
           onZoomOut={() => handleZoomChange(clamp(Number((zoom - 0.1).toFixed(2)), 0.4, 3))}
         />
@@ -426,9 +618,17 @@ function ShioriShell() {
               tocItems={activeTocItems}
               pageIndex={boundedPageIndex}
               activeTocHref={epubHref}
+              bookmarks={bookmarks}
+              highlights={highlights}
               onSelectDocument={(document) => void openRegisteredDocument(document)}
               onNavigatePage={requestPage}
               onNavigateHref={requestEpubHref}
+              onNavigateBookmark={(bookmark) => navigateLocator(bookmark.locatorType, bookmark.locator)}
+              onNavigateHighlight={(highlight) => navigateLocator(highlight.locatorType, highlight.locator)}
+              onUpdateBookmarkNote={(bookmarkId, note) => void handleUpdateBookmarkNote(bookmarkId, note)}
+              onUpdateHighlightNote={(highlightId, note) => void handleUpdateHighlightNote(highlightId, note)}
+              onDeleteBookmark={(bookmarkId) => void handleDeleteBookmark(bookmarkId)}
+              onDeleteHighlight={(highlightId) => void handleDeleteHighlight(highlightId)}
             />
           ) : null}
 
@@ -443,8 +643,10 @@ function ShioriShell() {
                 pageIndex={boundedPageIndex}
                 zoom={zoom}
                 scrollTarget={scrollTarget}
+                highlights={highlights}
                 onDocumentLoaded={handlePdfDocumentLoaded}
                 onRenderError={showError}
+                onTextSelection={handleTextSelection}
                 onVisiblePageChange={setPageIndex}
               />
             ) : (
@@ -454,9 +656,11 @@ function ShioriShell() {
                 navigationTarget={epubTarget}
                 command={epubCommand}
                 zoom={zoom}
+                highlights={highlights}
                 onDocumentLoaded={handleEpubDocumentLoaded}
                 onLocationChange={handleEpubLocationChange}
                 onRenderError={showError}
+                onTextSelection={handleTextSelection}
               />
             )}
           </div>

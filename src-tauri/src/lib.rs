@@ -1,3 +1,4 @@
+mod annotations;
 mod db;
 mod documents;
 
@@ -54,6 +55,64 @@ fn read_document_bytes(file_path: String) -> Result<Vec<u8>, String> {
     documents::read_document_bytes(file_path)
 }
 
+#[tauri::command]
+fn list_bookmarks(
+    document_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<annotations::BookmarkRecord>, String> {
+    annotations::list_bookmarks(&state.db_path, document_id)
+}
+
+#[tauri::command]
+fn create_bookmark(
+    input: annotations::CreateBookmarkInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<annotations::BookmarkRecord, String> {
+    annotations::create_bookmark(&state.db_path, input)
+}
+
+#[tauri::command]
+fn update_bookmark_note(
+    input: annotations::UpdateBookmarkNoteInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<annotations::BookmarkRecord, String> {
+    annotations::update_bookmark_note(&state.db_path, input)
+}
+
+#[tauri::command]
+fn delete_bookmark(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    annotations::delete_bookmark(&state.db_path, id)
+}
+
+#[tauri::command]
+fn list_highlights(
+    document_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<annotations::HighlightRecord>, String> {
+    annotations::list_highlights(&state.db_path, document_id)
+}
+
+#[tauri::command]
+fn create_highlight(
+    input: annotations::CreateHighlightInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<annotations::HighlightRecord, String> {
+    annotations::create_highlight(&state.db_path, input)
+}
+
+#[tauri::command]
+fn update_highlight_note(
+    input: annotations::UpdateHighlightNoteInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<annotations::HighlightRecord, String> {
+    annotations::update_highlight_note(&state.db_path, input)
+}
+
+#[tauri::command]
+fn delete_highlight(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    annotations::delete_highlight(&state.db_path, id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let state = AppState::new().expect("failed to initialize Shiori storage");
@@ -66,7 +125,15 @@ pub fn run() {
             list_recent_documents,
             save_reading_position,
             get_reading_position,
-            read_document_bytes
+            read_document_bytes,
+            list_bookmarks,
+            create_bookmark,
+            update_bookmark_note,
+            delete_bookmark,
+            list_highlights,
+            create_highlight,
+            update_highlight_note,
+            delete_highlight
         ])
         .run(tauri::generate_context!())
         .expect("error while running Shiori");

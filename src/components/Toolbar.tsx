@@ -1,7 +1,9 @@
 import {
+  BookmarkPlus,
   ChevronLeft,
   ChevronRight,
   FilePlus,
+  Highlighter,
   Home,
   PanelLeftClose,
   PanelLeftOpen,
@@ -9,7 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import type { DocumentKind } from "../types";
+import type { DocumentKind, HighlightColor } from "../types";
 
 type ToolbarProps = {
   documentKind: DocumentKind | null;
@@ -23,6 +25,8 @@ type ToolbarProps = {
   isHome: boolean;
   canNavigatePrevious: boolean;
   canNavigateNext: boolean;
+  canCreateHighlight: boolean;
+  activeHighlightColor: HighlightColor;
   onOpenFile: () => void;
   onRefresh: () => void;
   onHome: () => void;
@@ -30,9 +34,14 @@ type ToolbarProps = {
   onPreviousPage: () => void;
   onNextPage: () => void;
   onPageNumberChange: (pageNumber: number) => void;
+  onCreateBookmark: () => void;
+  onCreateHighlight: () => void;
+  onChangeHighlightColor: (color: HighlightColor) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
 };
+
+const HIGHLIGHT_COLORS: HighlightColor[] = ["#facc15", "#60a5fa", "#34d399", "#fb7185"];
 
 function Toolbar({
   documentKind,
@@ -46,6 +55,8 @@ function Toolbar({
   isHome,
   canNavigatePrevious,
   canNavigateNext,
+  canCreateHighlight,
+  activeHighlightColor,
   onOpenFile,
   onRefresh,
   onHome,
@@ -53,6 +64,9 @@ function Toolbar({
   onPreviousPage,
   onNextPage,
   onPageNumberChange,
+  onCreateBookmark,
+  onCreateHighlight,
+  onChangeHighlightColor,
   onZoomIn,
   onZoomOut,
 }: ToolbarProps) {
@@ -141,6 +155,37 @@ function Toolbar({
       </div>
 
       <div className="shiori-toolbar-group">
+        <button
+          aria-label="Favoritar localizacao atual"
+          className="shiori-icon-button"
+          disabled={isHome}
+          type="button"
+          onClick={onCreateBookmark}
+        >
+          <BookmarkPlus size={17} />
+        </button>
+        <div className="shiori-highlight-colors" aria-label="Cor da marcacao">
+          {HIGHLIGHT_COLORS.map((color) => (
+            <button
+              key={color}
+              aria-label={`Usar cor ${color}`}
+              className={color === activeHighlightColor ? "is-active" : ""}
+              disabled={isHome}
+              style={{ background: color }}
+              type="button"
+              onClick={() => onChangeHighlightColor(color)}
+            />
+          ))}
+        </div>
+        <button
+          aria-label="Marcar selecao"
+          className="shiori-icon-button"
+          disabled={!canCreateHighlight}
+          type="button"
+          onClick={onCreateHighlight}
+        >
+          <Highlighter size={17} />
+        </button>
         <button
           aria-label="Diminuir zoom"
           className="shiori-icon-button"

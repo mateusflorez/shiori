@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ePub, { type Book, type NavItem } from "epubjs";
 import type {
   EpubNavigationTarget,
   EpubViewerCommand,
   EpubViewerLocation,
   EpubTocItem,
+  HighlightRecord,
+  HighlightRect,
+  ReaderTextSelection,
 } from "../types";
 import { clamp } from "../utils/format";
 
@@ -14,9 +17,11 @@ type EpubViewerProps = {
   navigationTarget: EpubNavigationTarget | null;
   command: EpubViewerCommand | null;
   zoom: number;
+  highlights: HighlightRecord[];
   onDocumentLoaded: (toc: EpubTocItem[]) => void;
   onLocationChange: (location: EpubViewerLocation) => void;
   onRenderError: (message: string) => void;
+  onTextSelection: (selection: ReaderTextSelection | null) => void;
 };
 
 type EpubSection = {
@@ -38,6 +43,12 @@ type ParsedLocator = {
 
 type PendingScroll = ParsedLocator & {
   behavior: ScrollBehavior;
+};
+
+type ParsedEpubHighlight = {
+  id: string;
+  color: string;
+  rects: HighlightRect[];
 };
 
 const SCROLL_LOCATOR_PREFIX = "shiori-scroll:";
@@ -74,6 +85,18 @@ function stripHash(href: string) {
 
 function normalizeHref(href: string) {
   return decodeURIComponent(stripHash(href)).replace(/^\/+/, "");
+}
+
+function clampUnit(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizeSelectedText(text: string) {
+  return text.replace(/\s+/g, " ").trim();
 }
 
 function sectionTitle(section: EpubSection, tocItems: EpubTocItem[]) {
@@ -151,6 +174,96 @@ function sectionIndexForTarget(book: Book | null, sections: RenderedSection[], h
       normalizedTarget.endsWith(normalizedSection) ||
       normalizedSection.endsWith(normalizedTarget)
     );
+  });
+}
+
+function captureEpubTextSelection(
+  frameDocument: Document,
+  iframe: HTMLIFrameElement | null,
+  section: EpubSection,
+): ReaderTextSelection | null {
+  const selection = frameDocument.getSelection();
+  const selectedText = normalizeSelectedText(selection?.toString() ?? "");
+
+  if (!iframe || !selection || selection.rangeCount === 0 || selection.isCollapsed || !selectedText) {
+    return null;
+  }
+
+  const frameWidth = iframe.clientWidth;
+  const frameHeight = iframe.clientHeight;
+  const range = selection.getRangeAt(0);
+  const rects = Array.from(range.getClientRects()).flatMap((rect) => {
+    if (rect.width < 1 || rect.height < 1 || frameWidth < 1 || frameHeight < 1) {
+      return [];
+    }
+
+    return [
+      {
+        x: clampUnit(rect.left / frameWidth),
+        y: clampUnit(rect.top / frameHeight),
+        width: clampUnit(rect.width / frameWidth),
+        height: clampUnit(rect.height / frameHeight),
+      },
+    ];
+  });
+
+  if (rects.length === 0) {
+    return null;
+  }
+
+  const firstRect = rects[0];
+  const sectionProgress = clampUnit(firstRect.y + firstRect.height / 2);
+
+  return {
+    documentKind: "epub",
+    locatorType: "epub_cfi",
+    locator: createScrollLocator(section.href, sectionProgress),
+    selectedText,
+    rangeJson: JSON.stringify({
+      kind: "epub",
+      href: section.href,
+      sectionIndex: section.index,
+      sectionProgress,
+      rects,
+    }),
+  };
+}
+
+function parseEpubHighlights(highlights: HighlightRecord[], section: EpubSection): ParsedEpubHighlight[] {
+  const normalizedSectionHref = normalizeHref(section.href);
+
+  return highlights.flatMap((highlight) => {
+    try {
+      const parsed = JSON.parse(highlight.rangeJson) as {
+        kind?: string;
+        href?: string;
+        sectionIndex?: number;
+        rects?: HighlightRect[];
+      };
+      const sameSection =
+        parsed.sectionIndex === section.index ||
+        (typeof parsed.href === "string" && normalizeHref(parsed.href) === normalizedSectionHref);
+
+      if (parsed.kind !== "epub" || !sameSection || !Array.isArray(parsed.rects)) {
+        return [];
+      }
+
+      return [
+        {
+          id: highlight.id,
+          color: highlight.color,
+          rects: parsed.rects.filter(
+            (rect) =>
+              Number.isFinite(rect.x) &&
+              Number.isFinite(rect.y) &&
+              Number.isFinite(rect.width) &&
+              Number.isFinite(rect.height),
+          ),
+        },
+      ];
+    } catch {
+      return [];
+    }
   });
 }
 
@@ -245,25 +358,31 @@ type EpubSectionFrameProps = {
   request: Function;
   section: EpubSection;
   zoom: number;
+  highlights: HighlightRecord[];
   onContentWheel: (deltaX: number, deltaY: number) => void;
   onFrameReady: (sectionIndex: number) => void;
   onRegisterElement: (sectionIndex: number, element: HTMLElement | null) => void;
   onRenderError: (message: string) => void;
+  onTextSelection: (selection: ReaderTextSelection | null) => void;
 };
 
 function EpubSectionFrame({
   request,
   section,
   zoom,
+  highlights,
   onContentWheel,
   onFrameReady,
   onRegisterElement,
   onRenderError,
+  onTextSelection,
 }: EpubSectionFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const selectionCleanupRef = useRef<(() => void) | null>(null);
   const [srcDoc, setSrcDoc] = useState("");
   const [height, setHeight] = useState(MIN_SECTION_HEIGHT);
+  const sectionHighlights = useMemo(() => parseEpubHighlights(highlights, section), [highlights, section]);
 
   const measure = useCallback(() => {
     const frameDocument = iframeRef.current?.contentDocument;
@@ -344,6 +463,17 @@ function EpubSectionFrame({
       { passive: false },
     );
 
+    selectionCleanupRef.current?.();
+    const emitSelection = () => {
+      onTextSelection(captureEpubTextSelection(frameDocument, iframeRef.current, section));
+    };
+    frameDocument.addEventListener("mouseup", emitSelection);
+    frameDocument.addEventListener("keyup", emitSelection);
+    selectionCleanupRef.current = () => {
+      frameDocument.removeEventListener("mouseup", emitSelection);
+      frameDocument.removeEventListener("keyup", emitSelection);
+    };
+
     for (const image of Array.from(frameDocument.images)) {
       image.addEventListener("load", measure, { once: true });
     }
@@ -360,6 +490,7 @@ function EpubSectionFrame({
 
   useEffect(() => {
     return () => {
+      selectionCleanupRef.current?.();
       resizeObserverRef.current?.disconnect();
     };
   }, []);
@@ -379,6 +510,24 @@ function EpubSectionFrame({
         style={{ height }}
         onLoad={handleLoad}
       />
+      {sectionHighlights.length > 0 ? (
+        <div className="epub-highlight-layer" aria-hidden="true">
+          {sectionHighlights.flatMap((highlight) =>
+            highlight.rects.map((rect, rectIndex) => (
+              <span
+                key={`${highlight.id}-${rectIndex}`}
+                style={{
+                  left: `${rect.x * 100}%`,
+                  top: `${rect.y * 100}%`,
+                  width: `${rect.width * 100}%`,
+                  height: `${rect.height * 100}%`,
+                  backgroundColor: highlight.color,
+                }}
+              />
+            )),
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -389,9 +538,11 @@ function EpubViewer({
   navigationTarget,
   command,
   zoom,
+  highlights,
   onDocumentLoaded,
   onLocationChange,
   onRenderError,
+  onTextSelection,
 }: EpubViewerProps) {
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const sectionElementsRef = useRef(new Map<number, HTMLElement>());
@@ -533,6 +684,7 @@ function EpubViewer({
     async function loadBook() {
       if (!data) {
         onDocumentLoaded([]);
+        onTextSelection(null);
         setSections([]);
         setRequest(null);
         return;
@@ -541,6 +693,7 @@ function EpubViewer({
       setLoading(true);
       setSections([]);
       setRequest(null);
+      onTextSelection(null);
       sectionElementsRef.current.clear();
       pendingScrollRef.current = null;
 
@@ -605,7 +758,7 @@ function EpubViewer({
         bookRef.current = null;
       }
     };
-  }, [data, onDocumentLoaded, onRenderError]);
+  }, [data, onDocumentLoaded, onRenderError, onTextSelection]);
 
   useEffect(() => {
     window.requestAnimationFrame(tryPendingScroll);
@@ -653,10 +806,12 @@ function EpubViewer({
               request={request}
               section={section}
               zoom={zoom}
+              highlights={highlights}
               onContentWheel={handleContentWheel}
               onFrameReady={handleFrameReady}
               onRegisterElement={registerElement}
               onRenderError={onRenderError}
+              onTextSelection={onTextSelection}
             />
               ))
             : null}

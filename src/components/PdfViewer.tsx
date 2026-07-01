@@ -3,7 +3,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
-import type { PdfOutlineItem } from "../types";
+import type { HighlightRecord, HighlightRect, PdfOutlineItem, ReaderTextSelection } from "../types";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -22,8 +22,10 @@ type PdfViewerProps = {
   pageIndex: number;
   zoom: number;
   scrollTarget: ScrollTarget | null;
+  highlights: HighlightRecord[];
   onDocumentLoaded: (pageCount: number, outline: PdfOutlineItem[]) => void;
   onRenderError: (message: string) => void;
+  onTextSelection: (selection: ReaderTextSelection | null) => void;
   onVisiblePageChange: (pageIndex: number) => void;
 };
 
@@ -39,7 +41,14 @@ type PdfPageViewProps = {
   baseSize: PageSize;
   zoom: number;
   shouldRender: boolean;
+  highlights: HighlightRecord[];
   onRenderError: (message: string) => void;
+};
+
+type ParsedPdfHighlight = {
+  id: string;
+  color: string;
+  rects: HighlightRect[];
 };
 
 async function resolveOutlinePageIndex(pdf: PDFDocumentProxy, dest: PdfOutlineNode["dest"]) {
@@ -99,12 +108,123 @@ function isExpectedAbort(error: unknown) {
   return error instanceof Error && /abort|aborted/i.test(error.message);
 }
 
+function clampUnit(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizeSelectedText(text: string) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function relativeRect(rect: DOMRect, containerRect: DOMRect): HighlightRect | null {
+  if (rect.width < 1 || rect.height < 1 || containerRect.width < 1 || containerRect.height < 1) {
+    return null;
+  }
+
+  const left = Math.max(rect.left, containerRect.left);
+  const right = Math.min(rect.right, containerRect.right);
+  const top = Math.max(rect.top, containerRect.top);
+  const bottom = Math.min(rect.bottom, containerRect.bottom);
+
+  if (right <= left || bottom <= top) {
+    return null;
+  }
+
+  return {
+    x: clampUnit((left - containerRect.left) / containerRect.width),
+    y: clampUnit((top - containerRect.top) / containerRect.height),
+    width: clampUnit((right - left) / containerRect.width),
+    height: clampUnit((bottom - top) / containerRect.height),
+  };
+}
+
+function capturePdfTextSelection(stage: HTMLElement | null): ReaderTextSelection | null {
+  const selection = window.getSelection();
+  const selectedText = normalizeSelectedText(selection?.toString() ?? "");
+
+  if (!stage || !selection || selection.rangeCount === 0 || selection.isCollapsed || !selectedText) {
+    return null;
+  }
+
+  const range = selection.getRangeAt(0);
+  const pageElements = Array.from(stage.querySelectorAll<HTMLElement>("[data-page-index]"));
+  const rectsByPage = new Map<number, HighlightRect[]>();
+
+  for (const clientRect of Array.from(range.getClientRects())) {
+    for (const pageElement of pageElements) {
+      const pageIndex = Number(pageElement.dataset.pageIndex);
+      const pageRect = pageElement.getBoundingClientRect();
+      const rect = relativeRect(clientRect, pageRect);
+
+      if (!rect || !Number.isInteger(pageIndex)) {
+        continue;
+      }
+
+      rectsByPage.set(pageIndex, [...(rectsByPage.get(pageIndex) ?? []), rect]);
+    }
+  }
+
+  const firstPageIndex = Array.from(rectsByPage.keys()).sort((left, right) => left - right)[0];
+  if (!Number.isInteger(firstPageIndex)) {
+    return null;
+  }
+
+  const rects = rectsByPage.get(firstPageIndex) ?? [];
+  if (rects.length === 0) {
+    return null;
+  }
+
+  return {
+    documentKind: "pdf",
+    locatorType: "pdf_page",
+    locator: String(firstPageIndex + 1),
+    selectedText,
+    rangeJson: JSON.stringify({
+      kind: "pdf",
+      pageIndex: firstPageIndex,
+      rects,
+    }),
+  };
+}
+
+function parsePdfHighlights(highlights: HighlightRecord[], pageIndex: number): ParsedPdfHighlight[] {
+  return highlights.flatMap((highlight) => {
+    try {
+      const parsed = JSON.parse(highlight.rangeJson) as { kind?: string; pageIndex?: number; rects?: HighlightRect[] };
+      if (parsed.kind !== "pdf" || parsed.pageIndex !== pageIndex || !Array.isArray(parsed.rects)) {
+        return [];
+      }
+
+      return [
+        {
+          id: highlight.id,
+          color: highlight.color,
+          rects: parsed.rects.filter(
+            (rect) =>
+              Number.isFinite(rect.x) &&
+              Number.isFinite(rect.y) &&
+              Number.isFinite(rect.width) &&
+              Number.isFinite(rect.height),
+          ),
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+}
+
 function PdfPageView({
   pdf,
   pageIndex,
   baseSize,
   zoom,
   shouldRender,
+  highlights,
   onRenderError,
 }: PdfPageViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -114,6 +234,7 @@ function PdfPageView({
 
   const scaledWidth = Math.floor(baseSize.width * zoom);
   const scaledHeight = Math.floor(baseSize.height * zoom);
+  const pageHighlights = useMemo(() => parsePdfHighlights(highlights, pageIndex), [highlights, pageIndex]);
 
   useEffect(() => {
     if (!shouldRender) {
@@ -208,6 +329,24 @@ function PdfPageView({
         <>
           {!rendered ? <div className="pdf-page-placeholder">Renderizando...</div> : null}
           <canvas ref={canvasRef} />
+          {pageHighlights.length > 0 ? (
+            <div className="pdf-highlight-layer" aria-hidden="true">
+              {pageHighlights.flatMap((highlight) =>
+                highlight.rects.map((rect, rectIndex) => (
+                  <span
+                    key={`${highlight.id}-${rectIndex}`}
+                    style={{
+                      left: `${rect.x * 100}%`,
+                      top: `${rect.y * 100}%`,
+                      width: `${rect.width * 100}%`,
+                      height: `${rect.height * 100}%`,
+                      backgroundColor: highlight.color,
+                    }}
+                  />
+                )),
+              )}
+            </div>
+          ) : null}
           <div ref={textLayerRef} className="textLayer pdf-text-layer" />
         </>
       ) : (
@@ -222,8 +361,10 @@ function PdfViewer({
   pageIndex,
   zoom,
   scrollTarget,
+  highlights,
   onDocumentLoaded,
   onRenderError,
+  onTextSelection,
   onVisiblePageChange,
 }: PdfViewerProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -281,6 +422,10 @@ function PdfViewer({
     }
   }, [onVisiblePageChange, pageCount]);
 
+  const reportTextSelection = useCallback(() => {
+    onTextSelection(capturePdfTextSelection(stageRef.current));
+  }, [onTextSelection]);
+
   useEffect(() => {
     let cancelled = false;
     let loadingTask: PDFDocumentLoadingTask | null = null;
@@ -289,6 +434,7 @@ function PdfViewer({
       if (!data) {
         setPdf(null);
         setPageSizes([]);
+        onTextSelection(null);
         onDocumentLoaded(0, []);
         return;
       }
@@ -296,6 +442,7 @@ function PdfViewer({
       setLoading(true);
       setPdf(null);
       setPageSizes([]);
+      onTextSelection(null);
 
       try {
         loadingTask = pdfjsLib.getDocument({ data: data.slice() });
@@ -347,7 +494,7 @@ function PdfViewer({
       cancelled = true;
       void loadingTask?.destroy();
     };
-  }, [data, onDocumentLoaded, onRenderError]);
+  }, [data, onDocumentLoaded, onRenderError, onTextSelection]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -397,7 +544,13 @@ function PdfViewer({
   }
 
   return (
-    <div ref={stageRef} className="pdf-viewer-stage" aria-busy={loading}>
+    <div
+      ref={stageRef}
+      className="pdf-viewer-stage"
+      aria-busy={loading}
+      onKeyUp={reportTextSelection}
+      onMouseUp={reportTextSelection}
+    >
       {loading ? <div className="pdf-loading">Carregando PDF...</div> : null}
       {pdf && pageSizes.length === pageCount
         ? pageSizes.map((baseSize, index) => (
@@ -407,6 +560,7 @@ function PdfViewer({
               pageIndex={index}
               baseSize={baseSize}
               zoom={zoom}
+              highlights={highlights}
               shouldRender={renderedPageIndexes.has(index) || pageDistance(index, pageIndex) <= 2}
               onRenderError={onRenderError}
             />
