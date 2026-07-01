@@ -8,6 +8,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
+  Settings,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -28,6 +29,7 @@ type ToolbarProps = {
   canCreateHighlight: boolean;
   activeHighlightColor: HighlightColor;
   onOpenFile: () => void;
+  onOpenSettings: () => void;
   onRefresh: () => void;
   onHome: () => void;
   onToggleSidebar: () => void;
@@ -58,6 +60,7 @@ function Toolbar({
   canCreateHighlight,
   activeHighlightColor,
   onOpenFile,
+  onOpenSettings,
   onRefresh,
   onHome,
   onToggleSidebar,
@@ -98,6 +101,15 @@ function Toolbar({
         <button disabled={loading} type="button" onClick={onOpenFile}>
           <FilePlus size={17} />
           Abrir PDF/EPUB
+        </button>
+        <button
+          aria-label="Configuracoes"
+          className="shiori-icon-button"
+          disabled={loading}
+          type="button"
+          onClick={onOpenSettings}
+        >
+          <Settings size={17} />
         </button>
         <button
           aria-label="Atualizar recentes"

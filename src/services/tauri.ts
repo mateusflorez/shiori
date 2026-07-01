@@ -3,8 +3,12 @@ import type {
   BookmarkRecord,
   CreateBookmarkInput,
   CreateHighlightInput,
+  DictionarySourceRecord,
   DocumentRecord,
   HighlightRecord,
+  ImportDictionaryResult,
+  LookupResult,
+  LookupTermInput,
   ReadingPosition,
   SaveReadingPositionInput,
 } from "../types";
@@ -61,4 +65,20 @@ export async function updateHighlightNote(id: string, note: string | null) {
 
 export async function deleteHighlight(id: string) {
   return invoke<void>("delete_highlight", { id });
+}
+
+export async function importYomitanDictionary(filePath: string) {
+  return invoke<ImportDictionaryResult>("import_yomitan_dictionary", { filePath });
+}
+
+export async function downloadRecommendedDictionary(key: string) {
+  return invoke<ImportDictionaryResult>("download_recommended_dictionary", { key });
+}
+
+export async function listDictionarySources() {
+  return invoke<DictionarySourceRecord[]>("list_dictionary_sources");
+}
+
+export async function lookupTerm(input: LookupTermInput) {
+  return invoke<LookupResult>("lookup_term", { input });
 }

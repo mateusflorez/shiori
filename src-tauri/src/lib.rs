@@ -1,8 +1,10 @@
 mod annotations;
 mod db;
+mod dictionaries;
 mod documents;
 
 use std::path::PathBuf;
+use tauri::Emitter;
 
 #[derive(Clone)]
 struct AppState {
@@ -113,6 +115,40 @@ fn delete_highlight(id: String, state: tauri::State<'_, AppState>) -> Result<(),
     annotations::delete_highlight(&state.db_path, id)
 }
 
+#[tauri::command]
+fn import_yomitan_dictionary(
+    file_path: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<dictionaries::ImportDictionaryResult, String> {
+    dictionaries::import_yomitan_dictionary(&state.db_path, file_path)
+}
+
+#[tauri::command]
+fn download_recommended_dictionary(
+    key: String,
+    state: tauri::State<'_, AppState>,
+    window: tauri::Window,
+) -> Result<dictionaries::ImportDictionaryResult, String> {
+    dictionaries::download_recommended_dictionary(&state.db_path, key, |progress| {
+        let _ = window.emit("dictionary-download-progress", progress);
+    })
+}
+
+#[tauri::command]
+fn list_dictionary_sources(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<dictionaries::DictionarySourceRecord>, String> {
+    dictionaries::list_dictionary_sources(&state.db_path)
+}
+
+#[tauri::command]
+fn lookup_term(
+    input: dictionaries::LookupTermInput,
+    state: tauri::State<'_, AppState>,
+) -> Result<dictionaries::LookupResult, String> {
+    dictionaries::lookup_term(&state.db_path, input)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let state = AppState::new().expect("failed to initialize Shiori storage");
@@ -133,7 +169,11 @@ pub fn run() {
             list_highlights,
             create_highlight,
             update_highlight_note,
-            delete_highlight
+            delete_highlight,
+            import_yomitan_dictionary,
+            download_recommended_dictionary,
+            list_dictionary_sources,
+            lookup_term
         ])
         .run(tauri::generate_context!())
         .expect("error while running Shiori");

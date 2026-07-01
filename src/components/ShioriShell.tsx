@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
+import DictionaryPopup from "./DictionaryPopup";
 import EpubViewer from "./EpubViewer";
 import HomeScreen from "./HomeScreen";
 import PdfViewer from "./PdfViewer";
+import SettingsScreen from "./SettingsScreen";
 import Sidebar from "./Sidebar";
 import Toolbar from "./Toolbar";
 import {
@@ -10,10 +13,14 @@ import {
   createHighlight,
   deleteBookmark,
   deleteHighlight,
+  downloadRecommendedDictionary,
   getReadingPosition,
+  importYomitanDictionary,
   listBookmarks,
+  listDictionarySources,
   listHighlights,
   listRecentDocuments,
+  lookupTerm,
   openDocumentRecord,
   readDocumentBytes,
   saveReadingPosition,
@@ -22,6 +29,8 @@ import {
 } from "../services/tauri";
 import type {
   BookmarkRecord,
+  DictionaryDownloadProgress,
+  DictionarySourceRecord,
   DocumentRecord,
   EpubNavigationTarget,
   EpubViewerCommand,
@@ -29,7 +38,9 @@ import type {
   EpubTocItem,
   HighlightColor,
   HighlightRecord,
+  LookupResult,
   PdfOutlineItem,
+  ReaderLookupRequest,
   ReaderTextSelection,
 } from "../types";
 import { clamp } from "../utils/format";
@@ -44,6 +55,15 @@ type ScrollTarget = {
   token: number;
 };
 
+type LookupPopupState = {
+  query: string;
+  x: number;
+  y: number;
+  loading: boolean;
+  error: string | null;
+  result: LookupResult | null;
+} | null;
+
 const DEFAULT_ZOOM = 1;
 
 function ShioriShell() {
@@ -52,6 +72,7 @@ function ShioriShell() {
   const scrollTargetTokenRef = useRef(0);
   const epubTargetTokenRef = useRef(0);
   const epubCommandTokenRef = useRef(0);
+  const lookupTokenRef = useRef(0);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
   const [documentData, setDocumentData] = useState<Uint8Array | null>(null);
@@ -59,6 +80,12 @@ function ShioriShell() {
   const [epubToc, setEpubToc] = useState<EpubTocItem[]>([]);
   const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([]);
   const [highlights, setHighlights] = useState<HighlightRecord[]>([]);
+  const [dictionarySources, setDictionarySources] = useState<DictionarySourceRecord[]>([]);
+  const [lookupPopup, setLookupPopup] = useState<LookupPopupState>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [dictionaryDownloadKey, setDictionaryDownloadKey] = useState<string | null>(null);
+  const [dictionaryDownloadProgress, setDictionaryDownloadProgress] =
+    useState<DictionaryDownloadProgress | null>(null);
   const [activeSelection, setActiveSelection] = useState<ReaderTextSelection | null>(null);
   const [highlightColor, setHighlightColor] = useState<HighlightColor>("#facc15");
   const [pageCount, setPageCount] = useState(0);
@@ -82,6 +109,7 @@ function ShioriShell() {
   const activeTitle = activeDocument?.title ?? "";
   const pageNumber = pageCount > 0 ? pageIndex + 1 : 0;
   const isHome = !activeDocument;
+  const isSettings = settingsOpen;
   const activeTocItems = isEpub ? epubToc : outline;
 
   const loadRecent = useCallback(async () => {
@@ -101,6 +129,13 @@ function ShioriShell() {
     setHighlights(nextHighlights);
   }, []);
 
+  const loadDictionaries = useCallback(async () => {
+    const sources = await listDictionarySources();
+    setDictionarySources(sources);
+
+    return sources;
+  }, []);
+
   const showError = useCallback((message: string) => {
     setAlert({ kind: "danger", message });
   }, []);
@@ -112,6 +147,9 @@ function ShioriShell() {
     setEpubToc([]);
     setBookmarks([]);
     setHighlights([]);
+    setLookupPopup(null);
+    setSettingsOpen(false);
+    setDictionaryDownloadProgress(null);
     setActiveSelection(null);
     setPageCount(0);
     setPageIndex(0);
@@ -138,6 +176,7 @@ function ShioriShell() {
 
         setActiveDocument(document);
         setDocumentData(bytes);
+        setSettingsOpen(false);
         setOutline([]);
         setEpubToc([]);
         setBookmarks([]);
@@ -204,6 +243,19 @@ function ShioriShell() {
     }
   }, [loadRecent, showError]);
 
+  const refreshDictionaries = useCallback(async () => {
+    try {
+      await loadDictionaries();
+    } catch (error) {
+      console.error("Failed to load dictionaries", error);
+    }
+  }, [loadDictionaries]);
+
+  const openSettings = useCallback(() => {
+    setLookupPopup(null);
+    setSettingsOpen(true);
+  }, []);
+
   const chooseDocumentFile = useCallback(async () => {
     setLoading(true);
     setAlert(null);
@@ -229,6 +281,68 @@ function ShioriShell() {
       setLoading(false);
     }
   }, [loadRecent, openRegisteredDocument, showError]);
+
+  const chooseDictionaryFile = useCallback(async () => {
+    setLoading(true);
+    setAlert(null);
+
+    try {
+      const selectedPath = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Dicionario Yomitan", extensions: ["zip"] }],
+      });
+
+      if (typeof selectedPath !== "string") {
+        return;
+      }
+
+      const result = await importYomitanDictionary(selectedPath);
+      await loadDictionaries();
+      setAlert({
+        kind: "success",
+        message: `${result.source.name} importado: ${result.termCount} termos, ${result.kanjiCount} kanji, ${result.metaCount} metadados.`,
+      });
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Nao foi possivel importar o dicionario.");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadDictionaries, showError]);
+
+  const downloadDictionary = useCallback(
+    async (key: string) => {
+      setDictionaryDownloadKey(key);
+      setDictionaryDownloadProgress({
+        key,
+        downloadedBytes: 0,
+        totalBytes: null,
+        progress: null,
+        phase: "starting",
+        importedRows: null,
+        totalRows: null,
+        stage: null,
+      });
+      setLoading(true);
+      setAlert(null);
+
+      try {
+        const result = await downloadRecommendedDictionary(key);
+        await loadDictionaries();
+        setAlert({
+          kind: "success",
+          message: `${result.source.name} instalado: ${result.termCount} termos, ${result.kanjiCount} kanji, ${result.metaCount} metadados.`,
+        });
+      } catch (error) {
+        showError(error instanceof Error ? error.message : "Nao foi possivel baixar o dicionario.");
+      } finally {
+        setDictionaryDownloadKey(null);
+        setDictionaryDownloadProgress(null);
+        setLoading(false);
+      }
+    },
+    [loadDictionaries, showError],
+  );
 
   const boundedPageIndex = useMemo(
     () => clamp(pageIndex, 0, Math.max(0, pageCount - 1)),
@@ -270,6 +384,86 @@ function ShioriShell() {
       setActiveSelection(selection);
     },
     [activeDocument?.kind],
+  );
+
+  const runLookup = useCallback(
+    async (request: ReaderLookupRequest) => {
+      if (dictionarySources.length === 0) {
+        setLookupPopup({
+          query: request.query,
+          x: request.clientX,
+          y: request.clientY,
+          loading: false,
+          error: "Abra Configuracoes e baixe Jitendex, KANJIDIC ou Jiten antes de consultar.",
+          result: null,
+        });
+        return;
+      }
+
+      const token = lookupTokenRef.current + 1;
+      lookupTokenRef.current = token;
+      setLookupPopup({
+        query: request.query,
+        x: request.clientX,
+        y: request.clientY,
+        loading: true,
+        error: null,
+        result: null,
+      });
+
+      try {
+        const result = await lookupTerm({
+          query: request.query,
+          documentId: activeDocument?.id ?? null,
+          sentence: request.sentence,
+          selectedText: request.selectedText,
+        });
+
+        if (lookupTokenRef.current !== token) {
+          return;
+        }
+
+        setLookupPopup({
+          query: request.query,
+          x: request.clientX,
+          y: request.clientY,
+          loading: false,
+          error: null,
+          result,
+        });
+      } catch (error) {
+        if (lookupTokenRef.current !== token) {
+          return;
+        }
+
+        setLookupPopup({
+          query: request.query,
+          x: request.clientX,
+          y: request.clientY,
+          loading: false,
+          error: error instanceof Error ? error.message : "Nao foi possivel consultar o dicionario.",
+          result: null,
+        });
+      }
+    },
+    [activeDocument?.id, dictionarySources.length],
+  );
+
+  const lookupKanjiFromPopup = useCallback(
+    (character: string) => {
+      if (!lookupPopup) {
+        return;
+      }
+
+      void runLookup({
+        query: character,
+        sentence: null,
+        selectedText: character,
+        clientX: lookupPopup.x,
+        clientY: lookupPopup.y,
+      });
+    },
+    [lookupPopup, runLookup],
   );
 
   const requestEpubCommand = useCallback((action: EpubViewerCommand["action"]) => {
@@ -343,6 +537,32 @@ function ShioriShell() {
 
   useEffect(() => {
     void refreshRecent();
+    void refreshDictionaries();
+  }, []);
+
+  useEffect(() => {
+    let unlistenDownloadProgress: (() => void) | null = null;
+    let cancelled = false;
+
+    void listen<DictionaryDownloadProgress>("dictionary-download-progress", (event) => {
+      setDictionaryDownloadProgress(event.payload);
+    })
+      .then((unlisten) => {
+        if (cancelled) {
+          unlisten();
+          return;
+        }
+
+        unlistenDownloadProgress = unlisten;
+      })
+      .catch((error) => {
+        console.error("Failed to listen for dictionary download progress", error);
+      });
+
+    return () => {
+      cancelled = true;
+      unlistenDownloadProgress?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -554,7 +774,7 @@ function ShioriShell() {
 
   return (
     <main className="shiori-app-shell">
-      {isHome ? null : (
+      {isHome || isSettings ? null : (
         <Toolbar
           documentKind={activeKind}
           title={activeTitle}
@@ -570,6 +790,7 @@ function ShioriShell() {
           canCreateHighlight={Boolean(activeSelection)}
           activeHighlightColor={highlightColor}
           onOpenFile={() => void chooseDocumentFile()}
+          onOpenSettings={openSettings}
           onRefresh={() => void refreshRecent()}
           onHome={resetShioriState}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
@@ -600,11 +821,22 @@ function ShioriShell() {
 
       {alert ? <div className={`shiori-alert ${alert.kind}`}>{alert.message}</div> : null}
 
-      {isHome ? (
+      {isSettings ? (
+        <SettingsScreen
+          sources={dictionarySources}
+          loading={loading}
+          downloadKey={dictionaryDownloadKey}
+          downloadProgress={dictionaryDownloadProgress}
+          onBack={() => setSettingsOpen(false)}
+          onDownloadDictionary={(key) => void downloadDictionary(key)}
+          onImportDictionary={() => void chooseDictionaryFile()}
+        />
+      ) : isHome ? (
         <HomeScreen
           documents={documents}
           loading={loading}
           onOpenFile={() => void chooseDocumentFile()}
+          onOpenSettings={openSettings}
           onRefresh={() => void refreshRecent()}
           onSelectDocument={(document) => void openRegisteredDocument(document)}
         />
@@ -646,6 +878,7 @@ function ShioriShell() {
                 highlights={highlights}
                 onDocumentLoaded={handlePdfDocumentLoaded}
                 onRenderError={showError}
+                onLookupRequest={(request) => void runLookup(request)}
                 onTextSelection={handleTextSelection}
                 onVisiblePageChange={setPageIndex}
               />
@@ -660,12 +893,26 @@ function ShioriShell() {
                 onDocumentLoaded={handleEpubDocumentLoaded}
                 onLocationChange={handleEpubLocationChange}
                 onRenderError={showError}
+                onLookupRequest={(request) => void runLookup(request)}
                 onTextSelection={handleTextSelection}
               />
             )}
           </div>
         </section>
       )}
+
+      {lookupPopup && !isSettings ? (
+        <DictionaryPopup
+          result={lookupPopup.result}
+          loading={lookupPopup.loading}
+          error={lookupPopup.error}
+          query={lookupPopup.query}
+          x={lookupPopup.x}
+          y={lookupPopup.y}
+          onClose={() => setLookupPopup(null)}
+          onLookupKanji={lookupKanjiFromPopup}
+        />
+      ) : null}
     </main>
   );
 }

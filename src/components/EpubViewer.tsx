@@ -7,9 +7,11 @@ import type {
   EpubTocItem,
   HighlightRecord,
   HighlightRect,
+  ReaderLookupRequest,
   ReaderTextSelection,
 } from "../types";
 import { clamp } from "../utils/format";
+import { extractLookupContext } from "../utils/japanese";
 
 type EpubViewerProps = {
   data: Uint8Array | null;
@@ -21,6 +23,7 @@ type EpubViewerProps = {
   onDocumentLoaded: (toc: EpubTocItem[]) => void;
   onLocationChange: (location: EpubViewerLocation) => void;
   onRenderError: (message: string) => void;
+  onLookupRequest: (request: ReaderLookupRequest) => void;
   onTextSelection: (selection: ReaderTextSelection | null) => void;
 };
 
@@ -363,6 +366,7 @@ type EpubSectionFrameProps = {
   onFrameReady: (sectionIndex: number) => void;
   onRegisterElement: (sectionIndex: number, element: HTMLElement | null) => void;
   onRenderError: (message: string) => void;
+  onLookupRequest: (request: ReaderLookupRequest) => void;
   onTextSelection: (selection: ReaderTextSelection | null) => void;
 };
 
@@ -375,6 +379,7 @@ function EpubSectionFrame({
   onFrameReady,
   onRegisterElement,
   onRenderError,
+  onLookupRequest,
   onTextSelection,
 }: EpubSectionFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -467,11 +472,41 @@ function EpubSectionFrame({
     const emitSelection = () => {
       onTextSelection(captureEpubTextSelection(frameDocument, iframeRef.current, section));
     };
+    const emitLookup = (event: MouseEvent) => {
+      if (!event.shiftKey) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const context = extractLookupContext(
+        frameDocument,
+        event.clientX,
+        event.clientY,
+        (event.target as HTMLElement | null)?.textContent ?? "",
+      );
+
+      if (!context) {
+        return;
+      }
+
+      const iframeRect = iframeRef.current?.getBoundingClientRect();
+      frameDocument.getSelection()?.removeAllRanges();
+      onLookupRequest({
+        ...context,
+        selectedText: context.query,
+        clientX: (iframeRect?.left ?? 0) + event.clientX,
+        clientY: (iframeRect?.top ?? 0) + event.clientY,
+      });
+    };
     frameDocument.addEventListener("mouseup", emitSelection);
     frameDocument.addEventListener("keyup", emitSelection);
+    frameDocument.addEventListener("mousedown", emitLookup);
     selectionCleanupRef.current = () => {
       frameDocument.removeEventListener("mouseup", emitSelection);
       frameDocument.removeEventListener("keyup", emitSelection);
+      frameDocument.removeEventListener("mousedown", emitLookup);
     };
 
     for (const image of Array.from(frameDocument.images)) {
@@ -542,6 +577,7 @@ function EpubViewer({
   onDocumentLoaded,
   onLocationChange,
   onRenderError,
+  onLookupRequest,
   onTextSelection,
 }: EpubViewerProps) {
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -811,6 +847,7 @@ function EpubViewer({
               onFrameReady={handleFrameReady}
               onRegisterElement={registerElement}
               onRenderError={onRenderError}
+              onLookupRequest={onLookupRequest}
               onTextSelection={onTextSelection}
             />
               ))

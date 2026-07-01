@@ -56,6 +56,11 @@ pub fn initialize_database(db_path: &Path) -> Result<(), String> {
         &connection,
         1,
         include_str!("../migrations/001_initial.sql"),
+    )?;
+    apply_migration(
+        &connection,
+        2,
+        include_str!("../migrations/002_dictionaries.sql"),
     )
 }
 
@@ -128,7 +133,7 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq!(migration_count, 1);
+        assert_eq!(migration_count, 2);
         assert!(documents_exists);
     }
 }

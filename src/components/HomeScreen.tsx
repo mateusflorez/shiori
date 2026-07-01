@@ -3,7 +3,7 @@ import ePub from "epubjs";
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import shioriLogoUrl from "../../shiori-logo.svg?url";
-import { BookOpen, Clock, FilePlus, FileText, RefreshCw } from "lucide-react";
+import { BookOpen, Clock, FilePlus, FileText, RefreshCw, Settings } from "lucide-react";
 import { readDocumentBytes } from "../services/tauri";
 import type { DocumentRecord } from "../types";
 import { formatDate } from "../utils/format";
@@ -21,6 +21,7 @@ type HomeScreenProps = {
   documents: DocumentRecord[];
   loading: boolean;
   onOpenFile: () => void;
+  onOpenSettings: () => void;
   onRefresh: () => void;
   onSelectDocument: (document: DocumentRecord) => void;
 };
@@ -268,6 +269,7 @@ function HomeScreen({
   documents,
   loading,
   onOpenFile,
+  onOpenSettings,
   onRefresh,
   onSelectDocument,
 }: HomeScreenProps) {
@@ -298,6 +300,15 @@ function HomeScreen({
             onClick={onRefresh}
           >
             <RefreshCw size={16} />
+          </button>
+          <button
+            aria-label="Configuracoes"
+            className="secondary"
+            disabled={loading}
+            type="button"
+            onClick={onOpenSettings}
+          >
+            <Settings size={16} />
           </button>
         </div>
       </header>

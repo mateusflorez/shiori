@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
-import type { HighlightRecord, HighlightRect, PdfOutlineItem, ReaderTextSelection } from "../types";
+import type {
+  HighlightRecord,
+  HighlightRect,
+  PdfOutlineItem,
+  ReaderLookupRequest,
+  ReaderTextSelection,
+} from "../types";
+import { extractLookupContext } from "../utils/japanese";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -25,6 +32,7 @@ type PdfViewerProps = {
   highlights: HighlightRecord[];
   onDocumentLoaded: (pageCount: number, outline: PdfOutlineItem[]) => void;
   onRenderError: (message: string) => void;
+  onLookupRequest: (request: ReaderLookupRequest) => void;
   onTextSelection: (selection: ReaderTextSelection | null) => void;
   onVisiblePageChange: (pageIndex: number) => void;
 };
@@ -364,6 +372,7 @@ function PdfViewer({
   highlights,
   onDocumentLoaded,
   onRenderError,
+  onLookupRequest,
   onTextSelection,
   onVisiblePageChange,
 }: PdfViewerProps) {
@@ -425,6 +434,38 @@ function PdfViewer({
   const reportTextSelection = useCallback(() => {
     onTextSelection(capturePdfTextSelection(stageRef.current));
   }, [onTextSelection]);
+
+  const handleLookupPointerDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (!event.shiftKey) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const target = event.target as HTMLElement | null;
+      const context = extractLookupContext(
+        document,
+        event.clientX,
+        event.clientY,
+        target?.textContent ?? "",
+      );
+
+      if (!context) {
+        return;
+      }
+
+      window.getSelection()?.removeAllRanges();
+      onLookupRequest({
+        ...context,
+        selectedText: context.query,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    },
+    [onLookupRequest],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -549,6 +590,7 @@ function PdfViewer({
       className="pdf-viewer-stage"
       aria-busy={loading}
       onKeyUp={reportTextSelection}
+      onMouseDown={handleLookupPointerDown}
       onMouseUp={reportTextSelection}
     >
       {loading ? <div className="pdf-loading">Carregando PDF...</div> : null}

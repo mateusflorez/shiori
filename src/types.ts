@@ -136,3 +136,95 @@ export type CreateHighlightInput = {
   color: HighlightColor;
   note: string | null;
 };
+
+export type DictionarySourceRecord = {
+  id: string;
+  name: string;
+  format: string;
+  revision: string | null;
+  enabled: boolean;
+  priority: number;
+  importedAt: string;
+  termCount: number;
+  kanjiCount: number;
+  metaCount: number;
+};
+
+export type ImportDictionaryResult = {
+  source: DictionarySourceRecord;
+  termCount: number;
+  kanjiCount: number;
+  metaCount: number;
+};
+
+export type DictionaryDownloadProgress = {
+  key: string;
+  downloadedBytes: number;
+  totalBytes: number | null;
+  progress: number | null;
+  phase: "starting" | "downloading" | "importing" | "done";
+  importedRows: number | null;
+  totalRows: number | null;
+  stage: string | null;
+};
+
+export type LookupTermInput = {
+  query: string;
+  documentId: string | null;
+  sentence: string | null;
+  selectedText: string | null;
+};
+
+export type LookupTermEntry = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  expression: string;
+  reading: string | null;
+  score: number | null;
+  sequence: number | null;
+  definitionTags: string[];
+  termTags: string[];
+  glossary: string[];
+  rawJson: string;
+};
+
+export type LookupKanjiEntry = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  character: string;
+  onyomi: string[];
+  kunyomi: string[];
+  tags: string[];
+  meanings: string[];
+  stats: unknown;
+  rawJson: string;
+};
+
+export type LookupFrequencyEntry = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  expression: string;
+  reading: string | null;
+  displayValue: string;
+  sortValue: number | null;
+  rawJson: string;
+};
+
+export type LookupResult = {
+  query: string;
+  matchedText: string;
+  terms: LookupTermEntry[];
+  kanji: LookupKanjiEntry[];
+  frequencies: LookupFrequencyEntry[];
+};
+
+export type ReaderLookupRequest = {
+  query: string;
+  sentence: string | null;
+  selectedText: string | null;
+  clientX: number;
+  clientY: number;
+};
